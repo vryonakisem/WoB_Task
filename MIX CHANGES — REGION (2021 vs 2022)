@@ -1,0 +1,33 @@
+-- ============================================================
+-- Q3b | MIX CHANGES — REGION (2021 vs 2022)
+-- ============================================================
+WITH base AS (
+    SELECT
+        s.customer_id,
+        s.year,
+        SUM(p.price)                        AS revenue,
+        COALESCE(SUM(cc.carer_cost), 0)     AS cost
+    FROM shifts s
+    JOIN prices p
+        ON  s.customer_id = p.customer_id
+        AND s.funder_id   = p.funder_id
+        AND s.week_date   = p.week_date
+    LEFT JOIN carer_costs cc
+        ON  s.carer_id  = cc.carer_id
+        AND s.week_date = cc.week_date
+    WHERE s.year IN (2021, 2022)
+    GROUP BY s.customer_id, s.year
+)
+SELECT
+    b.year,
+    c.region,
+    COUNT(DISTINCT b.customer_id)                                   AS n_customers,
+    ROUND(SUM(b.revenue)::numeric, 0)                              AS total_revenue,
+    ROUND(SUM(b.revenue - b.cost)::numeric, 0)                     AS total_profit,
+    ROUND((SUM(b.revenue - b.cost) /
+           NULLIF(SUM(b.revenue), 0) * 100)::numeric, 1)            AS margin_pct
+FROM base b
+JOIN customers c ON b.customer_id = c.customer_id
+WHERE c.region IS NOT NULL
+GROUP BY b.year, c.region
+ORDER BY b.year, total_revenue DESC;
