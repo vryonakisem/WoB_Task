@@ -1,0 +1,24 @@
+-- ============================================================
+-- Q1a | PROFIT GROWTH YEAR-ON-YEAR
+-- ============================================================
+SELECT
+    s.year,
+    COUNT(DISTINCT s.customer_id)                                       AS customers,
+    ROUND(SUM(p.price)::numeric, 0)                                     AS total_revenue,
+    ROUND(SUM(cc.carer_cost)::numeric, 0)                               AS total_cost,
+    ROUND((SUM(p.price) - SUM(cc.carer_cost))::numeric, 0)              AS total_profit,
+    ROUND((SUM(p.price) - SUM(cc.carer_cost)) / SUM(p.price) * 100, 1) AS margin_pct,
+    ROUND(SUM(p.price) / NULLIF(SUM(s.shifts), 0), 2)                  AS avg_price_per_shift,
+    ROUND(SUM(cc.carer_cost) / NULLIF(SUM(s.shifts), 0), 2)            AS avg_cost_per_shift
+FROM shifts s
+JOIN prices p
+    ON  s.customer_id = p.customer_id
+    AND s.funder_id   = p.funder_id
+    AND s.week_date   = p.week_date
+LEFT JOIN carer_costs cc
+    ON  s.carer_id  = cc.carer_id
+    AND s.week_date = cc.week_date
+WHERE s.year IN (2021, 2022)
+GROUP BY s.year
+ORDER BY s.year;
+ 
