@@ -1,0 +1,39 @@
+
+-- ============================================================
+-- Q2a | PROFITABILITY BY CUSTOMER AGE BAND
+-- ============================================================
+WITH customer_profit AS (
+    SELECT
+        s.customer_id,
+        SUM(p.price)                                                AS revenue,
+        COALESCE(SUM(cc.carer_cost), 0)                             AS cost,
+        SUM(p.price) - COALESCE(SUM(cc.carer_cost), 0)             AS profit
+    FROM shifts s
+    JOIN prices p
+        ON  s.customer_id = p.customer_id
+        AND s.funder_id   = p.funder_id
+        AND s.week_date   = p.week_date
+    LEFT JOIN carer_costs cc
+        ON  s.carer_id  = cc.carer_id
+        AND s.week_date = cc.week_date
+    GROUP BY s.customer_id
+)
+SELECT
+    CASE
+        WHEN c.age_at_start < 60  THEN 'Under 60'
+        WHEN c.age_at_start < 70  THEN '60-69'
+        WHEN c.age_at_start < 80  THEN '70-79'
+        WHEN c.age_at_start < 90  THEN '80-89'
+        ELSE '90+'
+    END                                                                         AS age_band,
+    COUNT(*)                                                                    AS n_customers,
+    ROUND(AVG(cp.revenue)::numeric, 0)                                         AS avg_revenue,
+    ROUND(AVG(cp.cost)::numeric, 0)                                            AS avg_cost,
+    ROUND(AVG(cp.profit)::numeric, 0)                                          AS avg_profit,
+    ROUND((AVG(cp.profit) / NULLIF(AVG(cp.revenue), 0) * 100)::numeric, 1)    AS margin_pct
+FROM customer_profit cp
+JOIN customers c ON cp.customer_id = c.customer_id
+WHERE c.age_at_start IS NOT NULL
+GROUP BY age_band
+ORDER BY MIN(c.age_at_start);
+ 
