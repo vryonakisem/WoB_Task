@@ -1,0 +1,28 @@
+-- ============================================================
+-- Q4b | AVERAGE TENURE BY CARER COUNT
+-- Helps interpret churn: is it avoidable or natural discharge?
+-- ============================================================
+WITH carer_count AS (
+    SELECT
+        customer_id,
+        COUNT(DISTINCT carer_id)    AS n_carers_total
+    FROM shifts
+    GROUP BY customer_id
+)
+SELECT
+    CASE
+        WHEN cc.n_carers_total = 1 THEN '1 carer'
+        WHEN cc.n_carers_total = 2 THEN '2 carers'
+        WHEN cc.n_carers_total = 3 THEN '3 carers'
+        ELSE '4+ carers'
+    END                                                             AS carer_band,
+    COUNT(*)                                                        AS n_customers,
+    ROUND(AVG(
+        EXTRACT(EPOCH FROM (c.end_date - c.start_date)) / 86400 / 365.25
+    )::numeric, 1)                                                  AS avg_tenure_years,
+    ROUND(AVG(c.age_at_start)::numeric, 0)                         AS avg_age
+FROM carer_count cc
+JOIN customers c ON cc.customer_id = c.customer_id
+WHERE c.end_date IS NOT NULL
+GROUP BY carer_band
+ORDER BY MIN(cc.n_carers_total);
