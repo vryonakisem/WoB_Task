@@ -1,0 +1,48 @@
+-- ============================================================
+-- Q1b | PROFIT BRIDGE COMPONENTS (2021 -> 2022)
+-- Decompose profit change into: Price effect, Volume effect, Cost effect
+-- ============================================================
+WITH customer_year AS (
+    SELECT
+        s.customer_id,
+        s.year,
+        SUM(p.price)                                                AS revenue,
+        COALESCE(SUM(cc.carer_cost), 0)                             AS cost,
+        SUM(p.price) - COALESCE(SUM(cc.carer_cost), 0)             AS profit,
+        SUM(s.shifts)                                               AS shifts
+    FROM shifts s
+    JOIN prices p
+        ON  s.customer_id = p.customer_id
+        AND s.funder_id   = p.funder_id
+        AND s.week_date   = p.week_date
+    LEFT JOIN carer_costs cc
+        ON  s.carer_id  = cc.carer_id
+        AND s.week_date = cc.week_date
+    WHERE s.year IN (2021, 2022)
+    GROUP BY s.customer_id, s.year
+),
+summary AS (
+    SELECT
+        year,
+        COUNT(DISTINCT customer_id)     AS n_customers,
+        SUM(revenue)                    AS total_revenue,
+        SUM(cost)                       AS total_cost,
+        SUM(profit)                     AS total_profit,
+        AVG(revenue)                    AS avg_rev_per_cust,
+        AVG(cost)                       AS avg_cost_per_cust
+    FROM customer_year
+    GROUP BY year
+)
+SELECT
+    ROUND(s21.total_profit::numeric, 0)                                         AS profit_2021,
+    ROUND(s22.total_profit::numeric, 0)                                         AS profit_2022,
+    ROUND((s22.total_profit - s21.total_profit)::numeric, 0)                    AS total_change,
+    ROUND(((s22.n_customers - s21.n_customers) *
+           (s21.avg_rev_per_cust - s21.avg_cost_per_cust))::numeric, 0)         AS volume_effect,
+    ROUND(((s22.avg_rev_per_cust - s21.avg_rev_per_cust) *
+           s22.n_customers)::numeric, 0)                                        AS price_effect,
+    ROUND((-1 * (s22.avg_cost_per_cust - s21.avg_cost_per_cust) *
+           s22.n_customers)::numeric, 0)                                        AS cost_effect
+FROM summary s21
+JOIN summary s22 ON s21.year = 2021 AND s22.year = 2022;
+ 
