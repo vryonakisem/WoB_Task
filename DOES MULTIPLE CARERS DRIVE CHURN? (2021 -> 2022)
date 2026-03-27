@@ -1,0 +1,34 @@
+-- ============================================================
+-- Q4a | DOES MULTIPLE CARERS DRIVE CHURN? (2021 -> 2022)
+-- ============================================================
+WITH carer_count AS (
+    SELECT
+        customer_id,
+        year,
+        COUNT(DISTINCT carer_id)    AS n_carers
+    FROM shifts
+    GROUP BY customer_id, year
+),
+churn AS (
+    SELECT
+        c21.customer_id,
+        c21.n_carers,
+        CASE WHEN c22.customer_id IS NULL THEN 1 ELSE 0 END AS churned
+    FROM carer_count c21
+    LEFT JOIN carer_count c22
+        ON  c21.customer_id = c22.customer_id
+        AND c22.year = 2022
+    WHERE c21.year = 2021
+)
+SELECT
+    CASE
+        WHEN n_carers = 1 THEN '1 carer'
+        WHEN n_carers = 2 THEN '2 carers'
+        WHEN n_carers = 3 THEN '3 carers'
+        ELSE '4+ carers'
+    END                                         AS carer_band,
+    COUNT(*)                                    AS n_customers,
+    ROUND(AVG(churned) * 100, 1)               AS churn_rate_pct
+FROM churn
+GROUP BY carer_band
+ORDER BY MIN(n_carers);
