@@ -1,0 +1,32 @@
+-- ============================================================
+-- Q2b | PROFITABILITY BY CONDITION
+-- ============================================================
+WITH customer_profit AS (
+    SELECT
+        s.customer_id,
+        SUM(p.price)                                                AS revenue,
+        COALESCE(SUM(cc.carer_cost), 0)                             AS cost,
+        SUM(p.price) - COALESCE(SUM(cc.carer_cost), 0)             AS profit,
+        ROUND((SUM(p.price) - COALESCE(SUM(cc.carer_cost), 0)) /
+              NULLIF(SUM(p.price), 0) * 100, 1)                     AS margin
+    FROM shifts s
+    JOIN prices p
+        ON  s.customer_id = p.customer_id
+        AND s.funder_id   = p.funder_id
+        AND s.week_date   = p.week_date
+    LEFT JOIN carer_costs cc
+        ON  s.carer_id  = cc.carer_id
+        AND s.week_date = cc.week_date
+    GROUP BY s.customer_id
+)
+SELECT
+    co.primary_condition,
+    COUNT(*)                                    AS n_customers,
+    ROUND(AVG(cp.revenue)::numeric, 0)         AS avg_revenue,
+    ROUND(AVG(cp.profit)::numeric, 0)          AS avg_profit,
+    ROUND(AVG(cp.margin)::numeric, 1)          AS avg_margin_pct
+FROM customer_profit cp
+JOIN conditions co ON cp.customer_id = co.customer_id
+WHERE co.primary_condition != 'None recorded'
+GROUP BY co.primary_condition
+ORDER BY avg_profit DESC;
