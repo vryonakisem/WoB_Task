@@ -1,0 +1,16 @@
+-- ============================================================
+-- BONUS | CARER NATIONALITY MIX
+-- ============================================================
+SELECT
+    ca.nationality,
+    COUNT(DISTINCT s.customer_id)                                   AS customers_served,
+    COUNT(DISTINCT s.carer_id)                                      AS n_carers,
+    ROUND(AVG(cc.carer_cost)::numeric, 0)                          AS avg_weekly_cost
+FROM shifts s
+JOIN carers ca ON s.carer_id = ca.carer_id
+JOIN carer_costs cc
+    ON  s.carer_id  = cc.carer_id
+    AND s.week_date = cc.week_date
+GROUP BY ca.nationality
+ORDER BY n_carers DESC
+LIMIT 15;
